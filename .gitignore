@@ -1,3 +1,6 @@
+official-cpe-dictionary_v2.3.*
+nvdcve-2.0*
+
 *.py[cod]
 
 # C extensions
