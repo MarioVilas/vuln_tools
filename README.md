@@ -1,4 +1,4 @@
 vuln_tools
 ==========
 
-Tools to work with vulnerability taxonomies.
+Tools to work with vulnerability standards.
