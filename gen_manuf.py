@@ -213,3 +213,24 @@ for i in xrange(1000):
     t2 = time()
     td.append(t2 - t1)
 print "SQLite3: %s to access from scratch." % numpy.mean(td)
+
+"""
+Results on my machine:
+
+Pickle: 0.103633332253 seconds to load.
+C Pickle: 0.030119998455 seconds to load.
+Marshal: 0.02375 seconds to load.
+Dict: 1.48000478745e-06 to access.
+AnyDBM: 0.000647000074387 seconds to load.
+AnyDBM: 1.64299988747e-05 to access.
+SQLite3: 0.000156000137329 seconds to load.
+SQLite3: 4.49900174141e-05 to access.
+SQLite3: 0.00040499997139 to access from scratch.
+
+1,173,504 manuf.db
+1,343,488 manuf.dbm
+1,004,757 manuf.marshal
+  776,393 manuf.pickle
+  938,882 manuf.py
+1,335,564 manuf.txt
+"""
