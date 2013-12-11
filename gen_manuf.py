@@ -2,7 +2,6 @@
 # Example entry:
 # 00:00:01	Xerox                  # XEROX CORPORATION
 
-"""
 import re
 r = re.compile(
 
@@ -85,7 +84,6 @@ finally:
     db.close()
 
 del d
-"""
 
 from time import time
 from random import randint
