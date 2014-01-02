@@ -70,7 +70,7 @@ if __name__ == "__main__":
         print "Found local file! Skipping download..."
     try:
         if should_delete:
-            print "Downloading updates..."
+            print "Looking for updates..."
             if LAST_MODIFIED:
                 headers = {"If-Modified-Since": LAST_MODIFIED}
             else:
@@ -83,6 +83,7 @@ if __name__ == "__main__":
                     print "No updates found."
                     exit(0)
                 raise
+            print "Update found, downloading..."
             LAST_MODIFIED = resp.headers.get("Last-Modified", LAST_MODIFIED)
             data = resp.read()
             with open(IANA_FILE, "wb") as f:
