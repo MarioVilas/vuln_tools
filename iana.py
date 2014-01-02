@@ -50,6 +50,7 @@ service_to_port = {'system-monitor': 2609, 'metricadbc': 2622, 'zannet': 317, 'n
 
 if __name__ == "__main__":
     import csv
+    import os
     import os.path
     import urllib2
 
@@ -61,89 +62,101 @@ if __name__ == "__main__":
     udp_port_to_service = {}
     udp_service_to_port = {}
 
+    should_delete = False
     if not os.path.exists(IANA_FILE):
-        data = urllib2.urlopen(IANA_URL + IANA_FILE).read()
-        with open(IANA_FILE, "wb") as f:
-            f.write(data)
-        data = ""
+        should_delete = True
+    try:
+        if should_delete:
+            data = urllib2.urlopen(IANA_URL + IANA_FILE).read()
+            with open(IANA_FILE, "wb") as f:
+                f.write(data)
+            data = ""
 
-    with open(IANA_FILE, "rU") as f:
+        with open(IANA_FILE, "rU") as f:
 
-        # Service Name, Port Number, Transport Protocol, Description,
-        # Assignee, Contact, Registration Date, Modification Date, Reference,
-        # Service Code, Known Unauthorized Uses, Assignment Notes
+            # Service Name, Port Number, Transport Protocol,
+            # Description, Assignee, Contact, Registration Date,
+            # Modification Date, Reference, Service Code,
+            # Known Unauthorized Uses, Assignment Notes
 
-        reader = csv.reader(f)
-        for row in reader:
-            if not row:
-                continue
+            reader = csv.reader(f)
+            reader.next()
+            for row in reader:
+                if not row:
+                    continue
 
-            service = row[0].lower()
-            if not service:
-                continue
+                service = row[0].lower()
+                if not service:
+                    continue
 
-            try:
-                port = int(row[1])
-            except ValueError:
-                continue
-            if not port:
-                continue
+                try:
+                    port = int(row[1])
+                except ValueError:
+                    continue
+                if not port:
+                    continue
 
-            proto = row[2].lower()
-            if proto == "tcp":
-                port_to_service = tcp_port_to_service
-                service_to_port = tcp_service_to_port
-            elif proto == "udp":
-                port_to_service = udp_port_to_service
-                service_to_port = udp_service_to_port
-            else:
-                continue
+                proto = row[2].lower()
+                if proto == "tcp":
+                    port_to_service = tcp_port_to_service
+                    service_to_port = tcp_service_to_port
+                elif proto == "udp":
+                    port_to_service = udp_port_to_service
+                    service_to_port = udp_service_to_port
+                else:
+                    continue
 
+                if port not in port_to_service:
+                    port_to_service[port] = service
+                if service not in service_to_port:
+                    service_to_port[service] = port
+
+            reader = None
+
+        port_to_service = {}
+        service_to_port = {}
+
+        services = set(tcp_service_to_port.iteritems())
+        services.intersection_update(udp_service_to_port.iteritems())
+        for service, port in sorted(services):
             if port not in port_to_service:
                 port_to_service[port] = service
             if service not in service_to_port:
                 service_to_port[service] = port
+        services.clear()
 
-        reader = None
+        source = "tcp_port_to_service = %r\n" \
+                 "tcp_service_to_port = %r\n" \
+                 "udp_port_to_service = %r\n" \
+                 "udp_service_to_port = %r\n" \
+                 "port_to_service = %r\n" \
+                 "service_to_port = %r\n"
+        source %= (tcp_port_to_service,
+                   tcp_service_to_port,
+                   udp_port_to_service,
+                   udp_service_to_port,
+                   port_to_service,
+                   service_to_port)
 
-    port_to_service = {}
-    service_to_port = {}
-
-    services = set(tcp_service_to_port.iteritems())
-    services.intersection_update(udp_service_to_port.iteritems())
-    for service, port in sorted(services):
-        if port not in port_to_service:
-            port_to_service[port] = service
-        if service not in service_to_port:
-            service_to_port[service] = port
-    services.clear()
-
-    source = "tcp_port_to_service = %r\n" \
-             "tcp_service_to_port = %r\n" \
-             "udp_port_to_service = %r\n" \
-             "udp_service_to_port = %r\n" \
-             "port_to_service = %r\n" \
-             "service_to_port = %r\n"
-    source %= (tcp_port_to_service,
-               tcp_service_to_port,
-               udp_port_to_service,
-               udp_service_to_port,
-               port_to_service,
-               service_to_port)
-
-    separator = "#" * 3
-    separator = separator + " DO NOT EDIT THIS LINE " + separator + "\n"
-    with open(__file__, "rU") as f:
-        data = f.read()
-    p = data.find(separator)
-    if p >= 0:
-        p += len(separator)
-        q = data.find(separator, p)
-        if q >= p:
-            data = data[:p] + source + data[q:]
-            with open(__file__, "w") as f:
-                f.write(data)
+        separator = "#" * 3
+        separator = separator + " DO NOT EDIT THIS LINE " + separator + "\n"
+        with open(__file__, "rU") as f:
+            data = f.read()
+        p = data.find(separator)
+        if p >= 0:
+            p += len(separator)
+            q = data.find(separator, p)
+            if q >= p:
+                data = data[:p] + source + data[q:]
+                with open(__file__, "w") as f:
+                    f.write(data)
+            else:
+                raise RuntimeError(
+                    "Separator not found! Did you manually edit the file?")
         else:
-            raise RuntimeError("Separator not found! Did you edit the file?")
-    else:
-        raise RuntimeError("Separator not found! Did you edit the file?")
+            raise RuntimeError(
+                "Separator not found! Did you manually edit the file?")
+
+    finally:
+        if should_delete:
+            os.unlink(IANA_FILE)
