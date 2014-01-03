@@ -28,9 +28,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-__all__ = ["CVSS"]
+__all__ = ["CVSS_Base"]
 
-class CVSS(object):
+class CVSS_Base(object):
 
     METRICS = (
         "AV", "AC", "Au",
@@ -76,7 +76,7 @@ class CVSS(object):
     A_SCORE = C_SCORE
 
     def get_metric(self, metric):
-        return getattr(self, "_CVSS__" + metric)
+        return getattr(self, "_CVSS_Base__" + metric)
 
     def set_metric(self, metric, value):
         try:
@@ -90,7 +90,7 @@ class CVSS(object):
                 score = value
             else:
                 raise ValueError("Invalid %s value: %r" % (metric, value))
-        setattr(self, "_CVSS__" + metric, score)
+        setattr(self, "_CVSS_Base__" + metric, score)
 
     @property
     def exploitability(self):
@@ -124,7 +124,7 @@ class CVSS(object):
                     vector.append("%s:%s" % (metric, name))
                     found = True
                     break
-            assert found, "Internal error while calculating CVSS vector"
+            assert found, "Internal error while calculating CVSS base vector"
         return "/".join(vector)
 
     @vector.setter
@@ -134,7 +134,7 @@ class CVSS(object):
                 metric, value = metric_and_value.split(":", 1)
                 self.set_metric(metric.strip(), value.strip())
         except Exception:
-            raise ValueError("Invalid CVSS vector: %r" % (vector,))
+            raise ValueError("Invalid CVSS base vector: %r" % (vector,))
 
     def __init__(self, vector = "AV:L/AC:L/Au:N/C:N/I:N/A:N"):
         self.vector = vector
@@ -146,24 +146,24 @@ class CVSS(object):
         return "<%s score=%s vector=%s>" % \
                (self.__class__.__name__, self.score, self.vector)
 
-for _m in CVSS.METRICS:
+for _m in CVSS_Base.METRICS:
     def _p(metric):
         def _g(self):
             return self.get_metric(metric)
         def _s(self, value):
             self.set_metric(metric, value)
         return property(_g, _s)
-    setattr(CVSS, _m, _p(_m))
+    setattr(CVSS_Base, _m, _p(_m))
 
-CVSS.access_vector = CVSS.AV
-CVSS.access_complexity = CVSS.AC
-CVSS.authentication = CVSS.Au
-CVSS.confidentiality = CVSS.C
-CVSS.integrity = CVSS.I
-CVSS.availability = CVSS.A
+CVSS_Base.access_vector = CVSS_Base.AV
+CVSS_Base.access_complexity = CVSS_Base.AC
+CVSS_Base.authentication = CVSS_Base.Au
+CVSS_Base.confidentiality = CVSS_Base.C
+CVSS_Base.integrity = CVSS_Base.I
+CVSS_Base.availability = CVSS_Base.A
 
 if __name__ == "__main__":
     import sys
     for vector in sys.argv[1:]:
-        cvss = CVSS(vector)
+        cvss = CVSS_Base(vector)
         print(cvss)
