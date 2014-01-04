@@ -339,8 +339,6 @@ def test():
     assert ("%.1f" % cvss.adjusted_impact) == "8.0", cvss.adjusted_impact
     assert cvss.score == "7.8", cvss.score
 
-
-
 if __name__ == "__main__":
     import sys
     argv = sys.argv[1:]
