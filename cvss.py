@@ -45,6 +45,7 @@ class cvss_metaclass(type):
             setattr(cls, _m, _p(_m))
 
 class CVSS_Base(object):
+    "Base CVSS Calculator."
 
     __metaclass__ = cvss_metaclass
 
@@ -142,6 +143,8 @@ class CVSS_Base(object):
                 self.vector = old_vector
             raise ValueError("Invalid CVSS base vector: %r" % (vector,))
 
+    base_vector = vector
+
     @property
     def base_exploitability(self):
         return 20.0 * self.AV * self.AC * self.Au
@@ -164,13 +167,25 @@ class CVSS_Base(object):
 
     score = base_score
 
+    @property
+    def level(self):
+        # https://www.pcisecuritystandards.org/pdfs/asv_program_guide_v1.0.pdf
+        score = float(self.score)
+        if score == 0.0:
+            return "INFORMATIONAL"
+        if score < 4.0:
+            return "LOW"
+        if score < 7.0:
+            return "MEDIUM"
+        return "HIGH"
+
     def __init__(self, vector = None):
         self.vector = "AV:N/AC:L/Au:N/C:N/I:N/A:N"
         if vector:
             self.vector = vector
 
     def __str__(self):
-        return "%s (%s)" % (self.score, self.vector)
+        return "%s: %s [%s]" % (self.score, self.level.title(), self.vector)
 
     def __repr__(self):
         return "<%s score=%s vector=%s>" % \
@@ -184,6 +199,7 @@ CVSS_Base.integrity = CVSS_Base.I
 CVSS_Base.availability = CVSS_Base.A
 
 class CVSS(CVSS_Base):
+    "CVSS Calculator."
 
     METRICS = CVSS_Base.METRICS + (
         "E", "RL", "RC",
@@ -200,9 +216,9 @@ class CVSS(CVSS_Base):
     LOW_MEDIUM = "LM"
     MEDIUM_HIGH = "MH"
     NOT_DEFINED = "ND"
-    OFFICIAL_FIX = "O"
-    PROOF_OF_CONCEPT = "P"
-    TEMPORARY_FIX = "T"
+    OFFICIAL_FIX = "OF"
+    PROOF_OF_CONCEPT = "POC"
+    TEMPORARY_FIX = "TF"
     UNAVAILABLE = "U"
     UNCONFIRMED = "UC"
     UNCORROBORATED = "UR"
@@ -246,7 +262,7 @@ class CVSS(CVSS_Base):
         LOW: 0.25,
         MEDIUM: 0.75,
         HIGH: 1.0,
-        NOT_DEFINED: 0.0,
+        NOT_DEFINED: 1.0,
     }
 
     CR_SCORE = {
@@ -301,6 +317,10 @@ class CVSS(CVSS_Base):
 
     score = environmental_score
 
+    @property
+    def base_vector(self):
+        return "/".join(self.vector.split("/")[:6])
+
 CVSS.exploitability = CVSS.E
 CVSS.remediation_level = CVSS.RL
 CVSS.report_confidence = CVSS.RC
@@ -319,9 +339,16 @@ def test():
     assert cvss.base_score == "9.0", cvss.base_score
     assert cvss.score == "9.0", cvss.score
     assert cvss.vector == "AV:N/AC:L/Au:N/C:P/I:P/A:C", cvss.vector
-    cvss = CVSS("AV:N/AC:L/Au:N/C:P/I:P/A:C/E:P/RL:U/RC:UC")
+    cvss = CVSS("AV:N/AC:L/Au:N/C:P/I:P/A:C")
+    assert ("%.1f" % cvss.base_exploitability) == "10.0", cvss.base_exploitability
+    assert ("%.1f" % cvss.impact) == "8.5", cvss.impact
+    assert cvss.base_score == "9.0", cvss.base_score
+    assert cvss.score == "9.0", cvss.score
+    assert cvss.base_vector == "AV:N/AC:L/Au:N/C:P/I:P/A:C", cvss.base_vector
+    assert cvss.vector == "AV:N/AC:L/Au:N/C:P/I:P/A:C/E:ND/RL:U/RC:C/CDP:ND/TD:ND/CR:M/IR:M/AR:M", cvss.vector
+    cvss = CVSS("AV:N/AC:L/Au:N/C:P/I:P/A:C/E:POC/RL:U/RC:UC")
     assert cvss.temporal_score == "7.3", cvss.temporal_score
-    cvss = CVSS("C:P/I:P/A:C/E:P/RL:U/RC:UC")
+    cvss = CVSS("C:P/I:P/A:C/E:POC/RL:U/RC:UC")
     assert cvss.temporal_score == "7.3", cvss.temporal_score
     assert "AV:N/AC:L/Au:N/C:P/I:P/A:C" in cvss.vector
     cvss.RC = cvss.CONFIRMED
@@ -330,7 +357,7 @@ def test():
     assert cvss.temporal_score == "7.3", cvss.temporal_score
     cvss.RL = cvss.OFFICIAL_FIX
     assert cvss.temporal_score == "7.0", cvss.temporal_score
-    cvss = CVSS("AV:N/AC:L/Au:N/C:P/I:P/A:C/E:P/RL:T/RC:UC/CDP:MH/TD:H/CR:H/IR:H/AR:L")
+    cvss = CVSS("AV:N/AC:L/Au:N/C:P/I:P/A:C/E:POC/RL:TF/RC:UC/CDP:MH/TD:H/CR:H/IR:H/AR:L")
     assert cvss.base_score == "9.0", cvss.base_score
     assert ("%.1f" % cvss.base_exploitability) == "10.0", cvss.base_exploitability
     assert ("%.1f" % cvss.impact) == "8.5", cvss.impact
@@ -344,6 +371,9 @@ if __name__ == "__main__":
     argv = sys.argv[1:]
     if argv:
         for vector in argv:
-            print(CVSS_Base(vector))
+            try:
+                print(CVSS_Base(vector))
+            except ValueError:
+                print(CVSS(vector))
     else:
         test()
