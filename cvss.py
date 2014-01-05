@@ -173,6 +173,8 @@ class CVSS_Base(object):
         score = float(self.score)
         if score == 0.0:
             return "INFORMATIONAL"
+        if score == 10.0:
+            return "CRITICAL"
         if score < 4.0:
             return "LOW"
         if score < 7.0:
